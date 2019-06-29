@@ -4,16 +4,17 @@ use std::{fmt, mem};
 const U32_ALIGN: usize = mem::align_of::<u32>();
 const BLOCK_SIZE: usize = 64;
 const BLOCK_SIZE_BITS: u64 = BLOCK_SIZE as u64 * 8;
+const HASH_SIZE: usize = 32;
 
 pub struct Sha256 {
-    hash: [u32; 8],
+    hash: [u32; HASH_SIZE/4],
     curr: Vec64,
     len: u64,
 }
 
 impl Sha256 {
     #[allow(non_snake_case)]
-    pub fn process_block(&mut self, block: [u32; 16]) {
+    pub fn process_block(&mut self, block: [u32; BLOCK_SIZE/4]) {
         let mut W = [0u32; BLOCK_SIZE];
         W[..16].copy_from_slice(&block);
 
@@ -45,7 +46,14 @@ impl Sha256 {
         H[7].wrapping_add_mut(h);
     }
 
-    pub unsafe fn one_block_no_padding(data: [u8; 64]) -> [u8; 32] {
+    pub unsafe fn from_one_block(current: [u8; HASH_SIZE]) -> Self {
+        let mut res = Self::new();
+        res.hash = u8_to_u32(current);
+        res.len = BLOCK_SIZE_BITS;
+        res
+    }
+
+    pub unsafe fn one_block_no_padding(data: [u8; BLOCK_SIZE]) -> [u8; HASH_SIZE] {
         let mut hash = Self::new();
         hash.curr = data.into();
         hash.process_current_block();
@@ -103,12 +111,21 @@ impl Sha256 {
     }
 }
 
-fn u32_to_u8(mut data: [u32; 8]) -> [u8; 32] {
-    debug_assert_eq!(mem::size_of_val(&data), mem::size_of::<[u8; 32]>());
+fn u32_to_u8(mut data: [u32; HASH_SIZE/4]) -> [u8; HASH_SIZE] {
+    debug_assert_eq!(mem::size_of_val(&data), mem::size_of::<[u8; HASH_SIZE]>());
 
     memory_le_to_be(&mut data);
-    unsafe { *(hash.as_ptr() as *const u8 as *const [u8; 32]) }
+    unsafe { *(data.as_ptr() as *const u8 as *const [u8; HASH_SIZE]) }
+}
 
+fn u8_to_u32(mut data: [u8; HASH_SIZE]) -> [u32; HASH_SIZE/4] {
+    let ptr = data.as_ptr();
+    debug_assert_eq!(ptr as usize % U32_ALIGN, 0);
+    debug_assert_eq!(mem::size_of_val(&data), mem::size_of::<[u32; HASH_SIZE/4]>());
+
+    let mut res = unsafe { *(ptr as *const u32 as *const [u32; HASH_SIZE/4]) };
+    memory_le_to_be(&mut res);
+    res
 }
 
 #[inline(always)]
@@ -154,7 +171,10 @@ impl Vec64 {
 
     pub fn to_data(&self) -> [u32; 16] {
         let ptr = self.data.as_ptr();
+
+        debug_assert_eq!(mem::size_of_val(&self.data), mem::size_of::<[u32; 8]>());
         debug_assert_eq!(ptr as usize % U32_ALIGN, 0);
+
         let mut res = unsafe { *(ptr as *const u32 as *const [u32; 16]) };
         memory_le_to_be(&mut res);
         res
