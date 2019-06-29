@@ -45,7 +45,12 @@ impl Sha256 {
         H[7].wrapping_add_mut(h);
     }
 
-    pub unsafe fn one_block_no_padding()
+    pub unsafe fn one_block_no_padding(data: [u8; 64]) -> [u8; 32] {
+        let mut hash = Self::new();
+        hash.curr = data.into();
+        hash.process_current_block();
+        u32_to_u8(hash.hash)
+    }
 
     pub const fn new() -> Self {
         Self {
@@ -88,11 +93,7 @@ impl Sha256 {
 
     pub fn finalize(self) -> [u8; 32] {
         let mut hash = self.finalize_internal();
-
-        debug_assert_eq!(mem::size_of_val(&hash), mem::size_of::<[u8; 32]>());
-
-        memory_le_to_be(&mut hash);
-        unsafe { *(hash.as_ptr() as *const u8 as *const [u8; 32]) }
+        u32_to_u8(hash)
     }
 
     pub fn process_current_block(&mut self) {
@@ -100,6 +101,14 @@ impl Sha256 {
         self.process_block(self.curr.to_data());
         self.curr.clear();
     }
+}
+
+fn u32_to_u8(mut data: [u32; 8]) -> [u8; 32] {
+    debug_assert_eq!(mem::size_of_val(&data), mem::size_of::<[u8; 32]>());
+
+    memory_le_to_be(&mut data);
+    unsafe { *(hash.as_ptr() as *const u8 as *const [u8; 32]) }
+
 }
 
 #[inline(always)]
@@ -168,7 +177,12 @@ impl Vec64 {
 }
 
 impl From<[u8; 64]> for Vec64 {
-    fn
+    fn from(arr: [u8; 64]) -> Self {
+        Vec64 {
+            data: arr,
+            pos: 64,
+        }
+    }
 }
 
 #[inline(always)]
