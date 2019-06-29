@@ -261,6 +261,33 @@ impl Default for Sha256 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::{thread_rng, Rng};
+
+    #[test]
+    fn test_mid_state() {
+        let mut first = [0u8; 64];
+        thread_rng().fill(&mut first);
+        let second = get_rand_msg();
+
+        let mid_state = unsafe { Sha256::one_block_no_padding(first) };
+        let mut hash = unsafe { Sha256::from_one_block(mid_state) };
+        hash.input(&second);
+        let splitted = hash.finalize();
+
+        let mut hash = Sha256::new();
+        hash.input(&first);
+        hash.input(&second);
+
+        assert_eq!(splitted, hash.finalize());
+    }
+
+    fn get_rand_msg() -> Vec<u8> {
+        let mut rng = thread_rng();
+        let msg_len: usize = rng.gen_range(1, 1024);
+        let mut msg = vec![0u8; msg_len];
+        rng.fill(&mut msg[..]);
+        msg
+    }
 
     #[test]
     fn test_sha2_test_vectors() {
@@ -297,23 +324,5 @@ mod tests {
         hash.input(input);
         let input = hash.finalize_internal();
         input == res
-    }
-}
-
-#[cfg(all(test, feature = "nightly"))]
-mod benches {
-    extern crate test;
-    use self::test::{black_box, Bencher};
-    use super::*;
-    const MiB: usize = 1024 * 1024;
-
-    #[bench]
-    pub fn my_sha2(bh: &mut Bencher) {
-        let data = [01u8; MiB];
-        bh.iter(|| {
-            let mut hash = Sha256::new();
-            hash.input(&data);
-            black_box(hash.finalize());
-        });
     }
 }
