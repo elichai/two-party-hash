@@ -10,7 +10,6 @@ use structopt::clap::Error as ClapError;
 use structopt::StructOpt;
 
 fn main() {
-    println!("Hello, world!");
     let cli = Cli::from_args();
     if let Err(e) = handle_cli(cli) {
         e.exit();
