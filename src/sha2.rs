@@ -7,14 +7,14 @@ const BLOCK_SIZE_BITS: u64 = BLOCK_SIZE as u64 * 8;
 const HASH_SIZE: usize = 32;
 
 pub struct Sha256 {
-    hash: [u32; HASH_SIZE/4],
+    hash: [u32; HASH_SIZE / 4],
     curr: Vec64,
     len: u64,
 }
 
 impl Sha256 {
     #[allow(non_snake_case)]
-    pub fn process_block(&mut self, block: [u32; BLOCK_SIZE/4]) {
+    pub fn process_block(&mut self, block: [u32; BLOCK_SIZE / 4]) {
         let mut W = [0u32; BLOCK_SIZE];
         W[..16].copy_from_slice(&block);
 
@@ -100,7 +100,7 @@ impl Sha256 {
     }
 
     pub fn finalize(self) -> [u8; 32] {
-        let mut hash = self.finalize_internal();
+        let hash = self.finalize_internal();
         u32_to_u8(hash)
     }
 
@@ -111,19 +111,20 @@ impl Sha256 {
     }
 }
 
-fn u32_to_u8(mut data: [u32; HASH_SIZE/4]) -> [u8; HASH_SIZE] {
+fn u32_to_u8(mut data: [u32; HASH_SIZE / 4]) -> [u8; HASH_SIZE] {
     debug_assert_eq!(mem::size_of_val(&data), mem::size_of::<[u8; HASH_SIZE]>());
 
     memory_le_to_be(&mut data);
     unsafe { *(data.as_ptr() as *const u8 as *const [u8; HASH_SIZE]) }
 }
 
-fn u8_to_u32(mut data: [u8; HASH_SIZE]) -> [u32; HASH_SIZE/4] {
+#[allow(clippy::cast_ptr_alignment)]
+fn u8_to_u32(data: [u8; HASH_SIZE]) -> [u32; HASH_SIZE / 4] {
     let ptr = data.as_ptr();
     debug_assert_eq!(ptr as usize % U32_ALIGN, 0);
-    debug_assert_eq!(mem::size_of_val(&data), mem::size_of::<[u32; HASH_SIZE/4]>());
+    debug_assert_eq!(mem::size_of_val(&data), mem::size_of::<[u32; HASH_SIZE / 4]>());
 
-    let mut res = unsafe { *(ptr as *const u32 as *const [u32; HASH_SIZE/4]) };
+    let mut res = unsafe { *(ptr as *const u32 as *const [u32; HASH_SIZE / 4]) };
     memory_le_to_be(&mut res);
     res
 }
@@ -169,10 +170,11 @@ impl Vec64 {
         self.pos += 1;
     }
 
+    #[allow(clippy::cast_ptr_alignment)]
     pub fn to_data(&self) -> [u32; 16] {
         let ptr = self.data.as_ptr();
 
-        debug_assert_eq!(mem::size_of_val(&self.data), mem::size_of::<[u32; 8]>());
+        debug_assert_eq!(mem::size_of_val(&self.data), mem::size_of::<[u32; 16]>());
         debug_assert_eq!(ptr as usize % U32_ALIGN, 0);
 
         let mut res = unsafe { *(ptr as *const u32 as *const [u32; 16]) };
@@ -198,21 +200,18 @@ impl Vec64 {
 
 impl From<[u8; 64]> for Vec64 {
     fn from(arr: [u8; 64]) -> Self {
-        Vec64 {
-            data: arr,
-            pos: 64,
-        }
+        Vec64 { data: arr, pos: 64 }
     }
 }
 
 #[inline(always)]
 pub fn memory_le_to_be(_slice: &mut [u32]) {
     #[cfg(target_endian = "little")]
-        {
-            for byte in _slice.iter_mut() {
-                *byte = byte.to_be();
-            }
+    {
+        for byte in _slice.iter_mut() {
+            *byte = byte.to_be();
         }
+    }
 }
 
 impl Default for Vec64 {
@@ -281,16 +280,16 @@ mod tests {
         ));
 
         #[cfg(not(debug_assertions))]
-            {
-                let mut hash = Sha256::new();
-                for _ in 0..16_777_216 {
-                    hash.input(b"abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmno");
-                }
-                assert_eq!(
-                    hash.finalize_internal(),
-                    [0x50e72a0e, 0x26442fe2, 0x552dc393, 0x8ac58658, 0x228c0cbf, 0xb1d2ca87, 0x2ae43526, 0x6fcd055e]
-                )
+        {
+            let mut hash = Sha256::new();
+            for _ in 0..16_777_216 {
+                hash.input(b"abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmno");
             }
+            assert_eq!(
+                hash.finalize_internal(),
+                [0x50e72a0e, 0x26442fe2, 0x552dc393, 0x8ac58658, 0x228c0cbf, 0xb1d2ca87, 0x2ae43526, 0x6fcd055e]
+            )
+        }
     }
 
     fn test_vec(input: &[u8], res: [u32; 8]) -> bool {

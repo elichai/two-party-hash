@@ -1,4 +1,4 @@
-use rustc_hex::{FromHex, FromHexError};
+use rustc_hex::FromHex;
 use structopt::clap::{Error as ClapError, ErrorKind as ClapErrorKind};
 
 const NOT_VALID: ClapErrorKind = ClapErrorKind::ValueValidation;

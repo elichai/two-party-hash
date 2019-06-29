@@ -3,12 +3,10 @@ mod sha2;
 mod utils;
 
 use crate::sha2::Sha256;
-use crate::utils::parse_hex64;
 use cli::Cli;
 use rand_os::{rand_core::RngCore, OsRng};
 use rustc_hex::ToHex;
-use std::convert::TryInto;
-use structopt::clap::{Error as ClapError, ErrorKind as ClapErrorKind};
+use structopt::clap::Error as ClapError;
 use structopt::StructOpt;
 
 fn main() {
