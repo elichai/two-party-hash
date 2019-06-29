@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 structopt = "0.2.18"
 rustc-hex = "2.0.1"
+rand_os = "0.2.0"
